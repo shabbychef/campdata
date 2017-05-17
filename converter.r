@@ -7,20 +7,23 @@
 
 suppressMessages(library(docopt))       # we need docopt (>= 0.3) as on CRAN
 
-doc <- "Usage: converter.r [-v] [--station_file <STATIONFILE>] [--homelat <HOMELAT>] [--homelon <HOMELON>] [-O <OUTFILE>] [INFILES...]
+doc <- "Usage: converter.r [-v] [--station_file <STATIONFILE>] [--ok_station_list <AFILE>] [--homelat <HOMELAT>] [--homelon <HOMELON>] [-O <OUTFILE>] [INFILES...]
 
 -O OUTFILE --outfile=OUTFILE     Give the output file [default: all.csv]
 --homelat=HOMELAT                Latitude for home [default: 37.7749]
 --homelon=HOMELON                Longitude for home (negative for northern hemi?) [default: -122.4194]
 --station_file=STATIONFILE       Give the station file to lookup weather stations. [default: ghcnd-stations.txt]
+--ok_station_list=AFILE          Give the csv of the list of OK STATIONs in the STATIONFILE. [default: ok_stations.csv]
 -v --verbose                     Be more verbose
 -h --help                        show this help text"
 
 opt <- docopt(doc)
 
-suppressMessages(library(readr))
-suppressMessages(library(dplyr))
-suppressMessages(library(tidyr))
+suppressMessages({
+	library(readr)
+	library(dplyr)
+	library(tidyr)
+})
 
 # opt <- docopt(doc,args='CanadaCamp.csv  SouthwestCamp.csv  WestCamp.csv')
 
@@ -142,6 +145,15 @@ if (nchar(opt$station_file) > 0) {
 	stations <- stations %>%
 		filter(!is.na(lat),!is.na(lon)) %>%
 		filter(lat > 0,lon < 0)
+
+	# whitelist them
+	if (nchar(opt$ok_station_list) > 0) {
+		ok_stations <- readr::read_csv(opt$ok_station_list) %>%
+			rename(station=STATION)
+
+		stations <- stations %>%
+			inner_join(ok_stations)
+	}
 
 	outdat <- add_closest_station(outdat,stations)
 }
