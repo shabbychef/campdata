@@ -42,10 +42,19 @@ $(NOAA_D)/ghcnd_all : $(GHCND_ALL) | $(NOAA_D)
 $(NOAA_D)/ghcnd_caps :
 	mkdir -p $@
 
-ALL_DLY 				= $(wildcard $(NOAA_D)/ghcnd_all/*.dly)
-#ALL_DLY 				= $(shell ls $(NOAA_D)/ghcnd_all | head)
+$(NOAA_D)/ghcnd_nice :
+	mkdir -p $@
+
+# this is about 200 of them?
+#ALL_DLY 			:= $(wildcard $(NOAA_D)/ghcnd_all/A*10.dly)
+# this is all :
+ALL_DLY 			:= $(wildcard $(NOAA_D)/ghcnd_all/*.dly)
+#SUB_DLY 			:= $(wildcard $(NOAA_D)/ghcnd_all/*.dly)
+#ALL_DLY 			 = $(wordlist 1,100,$(SUB_DLY))
+##ALL_DLY 				= $(shell ls $(NOAA_D)/ghcnd_all | head)
 ALL_CAPS				= $(subst ghcnd_all,ghcnd_caps,$(patsubst %.dly,%_cap.csv,$(ALL_DLY)))
 
+# ALL CAPS# FOLDUP
 .PHONY : all_caps
 
 all_caps : $(ALL_CAPS)  ## make weather station capabilities files.
@@ -61,9 +70,27 @@ $(NOAA_D)/total_cap.csv :
 	echo "STATION,element,nomo,yrspan" > $@
 	find $(NOAA_D)/ghcnd_caps -name '*_cap.csv' -type f -exec grep -H -P '(PRCP|TMAX|TMIN),(4[01]|3[56789]),3' {} \; | \
 		perl -pe 's{^.+([A-Z].{10,10})_cap.csv:}{$$1,};' >> $@
+# UNFOLD
+
+# ALL NICE# FOLDUP
+ALL_NICE				= $(subst ghcnd_all,ghcnd_nice,$(patsubst %.dly,%_nice.csv,$(ALL_DLY)))
+
+.PHONY : all_nice
+
+all_nice : $(ALL_NICE)  ## make weather station props nice files.
+
+$(NOAA_D)/ghcnd_nice/%_nice.csv : $(NOAA_D)/ghcnd_all/%.dly prop_nice.r | $(NOAA_D)/ghcnd_nice
+	r $(filter %.r,$^) $(filter %.dly,$^) $@ 
+
+.PHONY : total_nice
+
+total_nice : $(NOAA_D)/total_nice.csv  ## gather all nice props files.
+
+$(NOAA_D)/total_nice.csv : 
+	csvstack $(NOAA_D)/ghcnd_nice/*nice.csv > $@
+# UNFOLD
 
 .PHONY : station_list
-
 
 station_list : $(OK_STATION_FILE) ## gather all acceptable stations in a CSV 'list'.
 
