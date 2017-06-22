@@ -11,8 +11,8 @@ suppressMessages(library(docopt))       # we need docopt (>= 0.3) as on CRAN
 
 doc <- "Usage: getcaps.r [-v] [--min_c=<MINC>] [--max_c=<MAXC>] [--max_prcp_mm=<MAXP>] INFILE [OUTFILE]
 
---min_c=MINC                     Minimum temperature in C. [default: 13]
---max_c=MAXC                     Maximum temperature in C. [default: 28]
+--min_c=MINC                     Minimum temperature in C. [default: 10]
+--max_c=MAXC                     Maximum temperature in C. [default: 30]
 --max_prcp_mm=MAXP               Maximum precipitation in mm. [default: 1]
 -v --verbose                     Be more verbose
 -h --help                        show this help text"

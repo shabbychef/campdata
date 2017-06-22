@@ -88,6 +88,14 @@ total_nice : $(NOAA_D)/total_nice.csv  ## gather all nice props files.
 
 $(NOAA_D)/total_nice.csv : 
 	csvstack $(NOAA_D)/ghcnd_nice/*nice.csv > $@
+
+.PHONY : best_nice 
+
+best_nice : $(NOAA_D)/best_nice.csv  ## gather the best nice props.
+
+$(NOAA_D)/best_nice.csv : $(NOAA_D)/total_nice.csv best_nice.r 
+	r $(filter %.r,$^) --station_file=ghcnd-stations.txt $(filter %.csv,$^) $@
+
 # UNFOLD
 
 .PHONY : station_list
