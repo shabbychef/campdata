@@ -55,30 +55,48 @@ shinyServer(function(input, output, session) {
 						new_units <- input$sel_units
 						if (old_units != new_units) {
 							old_elevation <- input$sel_elevation
+							old_dist <- input$sel_dist
 							if (new_units=='metric') {
 								new_elevation <- old_elevation * MPF
 								updateSliderInput(session,'sel_elevation',
 																	label="Elevation Range (m)",
 																	min=0,max=4000,value=round(new_elevation),step=1)
+
+								new_dist <- old_dist * KMPMi 
+								updateSliderInput(session,'sel_dist',
+																	label="Distance to point (km)",
+																	min=0,max=1500,value=round(new_dist),step=1)
 							} else {
 								new_elevation <- old_elevation / MPF
 								updateSliderInput(session,'sel_elevation',
 																	label="Elevation Range (ft)",
 																	min=0,max=round(4000 / MPF),value=round(new_elevation),step=1)
+
+								new_dist <- old_dist / KMPMi 
+								updateSliderInput(session,'sel_dist',
+																	label="Distance to point (mi)",
+																	min=0,max=round(1500 / KMPMi),value=round(new_dist),step=1)
 							}
-							selunits$system <- new_units
 						}
+						selunits$system <- new_units
 					})
 
 	just_load <- reactive({
-		indat <- readr::read_csv('../all.csv')
+		# fix dates_open
+		indat <- readr::read_csv('../all.csv') %>%
+			mutate(dates_open=gsub('ealry','early',dates_open)) %>%
+			mutate(dates_open=gsub(' -','-',dates_open)) %>%
+			mutate(dates_open=gsub('- ','-',dates_open)) 
 		indat
 	})
+
 	filtered_data <- reactive({
 		indat <- just_load()
-		elrange <- ifelse(selunits$system=='metric',
-											input$sel_elevation,
-											input$sel_elevation * MPF)
+		if (input$sel_units=='metric') {
+			elrange <- input$sel_elevation
+		} else {
+			elrange <- input$sel_elevation * MPF
+		}
 
 		otdat <- indat %>%
 			filter(type %in% input$sel_type,
@@ -86,20 +104,26 @@ shinyServer(function(input, output, session) {
 						 showers %in% .logical_it(input$sel_showers),
 						 drinking_water %in% .logical_it(input$sel_drinking_water),
 						 reservations %in% .logical_it(input$sel_reservations),
-						 (num_campsite >= min(input$sel_num_campsite) & num_campsite <= max(input$sel_num_campsite)) | (is.na(num_campsite)),
-						 (elevation_m >= min(elrange) & elevation_m <= max(elrange)) | (is.na(elevation_m)))
+						 (!is.na(num_campsite) & (num_campsite >= min(input$sel_num_campsite) & num_campsite <= max(input$sel_num_campsite)) | (is.na(num_campsite))),
+						 (!is.na(elevation_m) & (elevation_m >= min(elrange)) & (elevation_m <= max(elrange))) | (is.na(elevation_m)))
 		otdat
 	})
 
 	dist_data <- reactive({
-		srch_latlon <- c(input$sel_lat,input$sel_lon)
+		srch_lonlat <- c(input$sel_lon,input$sel_lat)
+
+		if (input$sel_units=='metric') {
+			dirange <- input$sel_dist
+		} else {
+			dirange <- input$sel_dist * KMPMi
+		}
+
 		otdat <- filtered_data() %>%
-			mutate(sdist = round(1e-3 * geosphere::distGeo(rev(srch_latlon),matrix(c(lon,lat),ncol=2) ),digits=2)) %>%
+			mutate(sdist = round(1e-3 * geosphere::distGeo(srch_lonlat,matrix(c(lon,lat),ncol=2) ),digits=2)) %>%
+			filter(sdist >= min(dirange),sdist <= max(dirange)) %>%
 			arrange(sdist) 
 		otdat 
 	})
-
-
 
 	# table of comparables #FOLDUP
 	output$camp_table <- DT::renderDataTable({
