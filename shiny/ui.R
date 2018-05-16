@@ -20,7 +20,7 @@ suppressMessages({
 })
 
 
-indat <- readr::read_csv('../all.csv')
+#indat <- readr::read_csv('../all.csv')
 
 types <- list(national=c('National Park'='NP',
 												 'National Monument'='NM',
@@ -66,7 +66,9 @@ shinyUI(
 			actionButton("do_lookup",label='go'),
 			numericInput("sel_lat","Latitude",value=37.7749,min=0,max=90,step=0.0001),
 			numericInput("sel_lon","Longitude",value=-122.4194,min=-180,max=180,step=0.0001),
-			selectInput("sel_type","Campground Type:",choices=types,selected='National Park',multiple=TRUE),
+			selectInput("sel_type","Campground Type:",choices=types,
+									selected=c('NP','SP','NM','SF','NF'),
+									multiple=TRUE),
 			selectInput("sel_toilets","Toilets:",choices=c('flush','vault','pit','flush_and_vault','none',NA),
 									selected='flush',multiple=TRUE),
 			selectInput("sel_showers","Showers:",choices=c('true','false','unknown'),
@@ -75,8 +77,9 @@ shinyUI(
 									selected='true',multiple=TRUE),
 			selectInput("sel_reservations","Accepts Reservations:",choices=c('true','false','unknown'),
 									selected='true',multiple=TRUE),
+			selectInput("sel_units","Units:",choices=c('metric','imperial'),selected='metric',multiple=FALSE),
 			hr(),
-			sliderInput("sel_elevation","Elevation Range",sep=',',post='m',min=0,max=4000,value=c(0,1800)),
+			sliderInput("sel_elevation","Elevation Range (m)",sep=',',post='',min=0,max=4000,value=c(0,1800)),
 			sliderInput("sel_num_campsite","Num Campsite Range",sep=',',post=' sites',min=0,max=1000,value=c(0,250)),
 			hr(),
 			helpText('data scraped from the web'),

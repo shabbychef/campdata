@@ -13,6 +13,7 @@ suppressMessages({
 	library(ggplot2)
 	library(dplyr)
 	library(geosphere)
+	library(magrittr)
 	library(ggmap)
 })
 
@@ -26,6 +27,9 @@ applylink <- function(title,url) {
 .logical_it <- function(x) {
 	as.logical(toupper(x))
 }
+
+MPF <<- 0.3048   # meters per foot
+KMPMi <<- 1.60934   # km per mile
 
 # Define server logic 
 shinyServer(function(input, output, session) {
@@ -44,12 +48,38 @@ shinyServer(function(input, output, session) {
 						updateNumericInput(session,'sel_lon',value=response$lon)
 					})
 
+	selunits <- reactiveValues(system='metric')
+	observeEvent(input$sel_units,
+					{
+						old_units <- selunits$system
+						new_units <- input$sel_units
+						if (old_units != new_units) {
+							old_elevation <- input$sel_elevation
+							if (new_units=='metric') {
+								new_elevation <- old_elevation * MPF
+								updateSliderInput(session,'sel_elevation',
+																	label="Elevation Range (m)",
+																	min=0,max=4000,value=round(new_elevation),step=1)
+							} else {
+								new_elevation <- old_elevation / MPF
+								updateSliderInput(session,'sel_elevation',
+																	label="Elevation Range (ft)",
+																	min=0,max=round(4000 / MPF),value=round(new_elevation),step=1)
+							}
+							selunits$system <- new_units
+						}
+					})
+
 	just_load <- reactive({
 		indat <- readr::read_csv('../all.csv')
 		indat
 	})
 	filtered_data <- reactive({
 		indat <- just_load()
+		elrange <- ifelse(selunits$system=='metric',
+											input$sel_elevation,
+											input$sel_elevation * MPF)
+
 		otdat <- indat %>%
 			filter(type %in% input$sel_type,
 						 toilets %in% input$sel_toilets,
@@ -57,7 +87,7 @@ shinyServer(function(input, output, session) {
 						 drinking_water %in% .logical_it(input$sel_drinking_water),
 						 reservations %in% .logical_it(input$sel_reservations),
 						 (num_campsite >= min(input$sel_num_campsite) & num_campsite <= max(input$sel_num_campsite)) | (is.na(num_campsite)),
-						 (elevation_m >= min(input$sel_elevation) & elevation_m <= max(input$sel_elevation)) | (is.na(elevation_m)))
+						 (elevation_m >= min(elrange) & elevation_m <= max(elrange)) | (is.na(elevation_m)))
 		otdat
 	})
 
@@ -81,12 +111,26 @@ shinyServer(function(input, output, session) {
 						 nearest_town,state,
 						 elevation_m,
 						 num_campsite,
-						 drinking_water,toilets,showers,reservations) %>%
+						 drinking_water,toilets,showers,reservations)  %>%
 		rename(`campground`=campground_name,
-					 `dist to point, km`=sdist,
 					 `nearest town`=nearest_town,
-					 `num campsites`=num_campsite,
-					 `elevation m`=elevation_m)
+					 `num campsites`=num_campsite)
+
+		if (selunits$system=='imperial') {
+			showdat %<>%
+				mutate(elevation_m=elevation_m / MPF,
+							 sdist=sdist / KMPMi) %>%
+				mutate(elevation_m=round(elevation_m),
+							 sdist=round(sdist,1)) %>%
+				rename(`dist to point, mi`=sdist,
+							 `elevation ft`=elevation_m)
+		} else {
+			showdat %<>%
+				mutate(elevation_m=round(elevation_m),
+							 sdist=round(sdist,1)) %>%
+				rename(`dist to point, km`=sdist,
+							 `elevation m`=elevation_m)
+		}
 
 		# for this javascript shiznit, recall that javascript starts
 		# counting at zero!

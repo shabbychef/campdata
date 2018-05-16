@@ -87,7 +87,11 @@ $(NOAA_D)/ghcnd_nice/%_nice.csv : $(NOAA_D)/ghcnd_all/%.dly prop_nice.r | $(NOAA
 total_nice : $(NOAA_D)/total_nice.csv  ## gather all nice props files.
 
 $(NOAA_D)/total_nice.csv : 
-	csvstack $(NOAA_D)/ghcnd_nice/*nice.csv > $@
+	echo "station,mu_ok,sd_ok,df_ok,mu_hdd,mu_cdd" > $@
+	find $(NOAA_D)/ghcnd_nice -name '*_nice.csv' -type f -exec grep -v 'mu_ok' {} \; >> $@
+
+# will not work when argument list too long ...
+	#csvstack $(NOAA_D)/ghcnd_nice/*nice.csv > $@
 
 .PHONY : best_nice 
 
@@ -102,8 +106,51 @@ $(NOAA_D)/best_nice.csv : $(NOAA_D)/total_nice.csv best_nice.r
 
 station_list : $(OK_STATION_FILE) ## gather all acceptable stations in a CSV 'list'.
 
-
 $(OK_STATION_FILE) : $(NOAA_D)/total_cap.csv distill_stations.r 
 	r $(filter %.r,$^) $(filter %.csv,$^) $@ 
 
+
+# daily climate data. much easier# FOLDUP
+DAILY_D					= daily
+TEMP_D 				  = $(DAILY_D)/temperature
+PRCP_D 				  = $(DAILY_D)/precipitation
+
+$(TEMP_D) : 
+	mkdir -p $@
+
+$(PRCP_D) : 
+	mkdir -p $@
+
+$(TEMP_D)/dly%.txt : $(TEMP_D)
+	wget -O $@ 'ftp://ftp.ncdc.noaa.gov/pub/data/normals/1981-2010/products/temperature/dly$*.txt'
+
+$(PRCP_D)/dly%.txt : $(PRCP_D)
+	wget -O $@ 'ftp://ftp.ncdc.noaa.gov/pub/data/normals/1981-2010/products/precipitation/dly$*.txt'
+
+DAILY_NEEDED 		 = $(TEMP_D)/dly-tavg-normal.txt $(TEMP_D)/dly-tmax-normal.txt $(TEMP_D)/dly-tmin-normal.txt 
+DAILY_NEEDED 		+= $(PRCP_D)/dly-prcp-50pctl.txt 
+
+.PHONY: daily_needed
+
+daily_needed : $(DAILY_NEEDED)  ## download the needed daily climate data.
+
+# weeklys 
+WEEKLY_D					= weekly
+
+$(WEEKLY_D) :
+	mkdir -p $@
+
+$(WEEKLY_D)/% : $(TEMP_D)/% get_weekly.r | $(WEEKLY_D)
+	r $(filter %.r,$^) $(filter-out %.r,$^) $@
+
+$(WEEKLY_D)/% : $(PRCP_D)/% get_weekly.r | $(WEEKLY_D)
+	r $(filter %.r,$^) $(filter-out %.r,$^) $@
+
+WEEKLY_NEEDED 		 = $(WEEKLY_D)/dly-tavg-normal.txt $(WEEKLY_D)/dly-tmax-normal.txt $(WEEKLY_D)/dly-tmin-normal.txt 
+WEEKLY_NEEDED 		+= $(WEEKLY_D)/dly-prcp-50pctl.txt 
+
+.PHONY : weekly_needed
+
+weekly_needed : $(WEEKLY_NEEDED)  ## convert daily to weekly files
+# UNFOLD
 
