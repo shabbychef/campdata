@@ -30,7 +30,7 @@ stations <- readr::read_fwf(opt$station_file,
 colnames(stations) <- c('station','lat','lon','elevation','state','location_name','GSN_flag','HCN_flag','WMO_ID')
 
 outdat <- nice %>%
-	left_join(stations,by=c('id'='station')) %>%
+	left_join(stations,by=c('station'='station')) %>%
 	arrange(desc(mu_ok))
 
 if (is.null(opt$OUTFILE)) {

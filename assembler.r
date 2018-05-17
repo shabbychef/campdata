@@ -1,19 +1,22 @@
 # /usr/bin/r
 #
+# staples together various campground files,
+# interpreting the data nicely.
+# 
+# later on we will attach weather data.
+#
 # Created: 2017.04.29
-# Copyright: Steven E. Pav, 2017
+# Copyright: Steven E. Pav, 2017-2018
 # Author: Steven E. Pav <steven@gilgamath.com>
 # Comments: Steven E. Pav
 
 suppressMessages(library(docopt))       # we need docopt (>= 0.3) as on CRAN
 
-doc <- "Usage: converter.r [-v] [--station_file <STATIONFILE>] [--ok_station_list <AFILE>] [--homelat <HOMELAT>] [--homelon <HOMELON>] [-O <OUTFILE>] [INFILES...]
+doc <- "Usage: assembler.r [-v] [--homelat <HOMELAT>] [--homelon <HOMELON>] [-O <OUTFILE>] [INFILES...]
 
 -O OUTFILE --outfile=OUTFILE     Give the output file [default: all.csv]
 --homelat=HOMELAT                Latitude for home [default: 37.7749]
 --homelon=HOMELON                Longitude for home (negative for northern hemi?) [default: -122.4194]
---station_file=STATIONFILE       Give the station file to lookup weather stations. [default: ghcnd-stations.txt]
---ok_station_list=AFILE          Give the csv of the list of OK STATIONs in the STATIONFILE. [default: ok_stations.csv]
 -v --verbose                     Be more verbose
 -h --help                        show this help text"
 
@@ -25,6 +28,7 @@ suppressMessages({
 	library(tidyr)
 	library(magrittr)
 	library(lubridate)
+	library(geosphere)
 })
 
 # opt <- docopt(doc,args='uscampgrounds/CanadaCamp.csv uscampgrounds/MidwestCamp.csv uscampgrounds/NortheastCamp.csv uscampgrounds/SouthCamp.csv uscampgrounds/SouthwestCamp.csv uscampgrounds/WestCamp.csv')
@@ -116,81 +120,11 @@ outdat <- lapply(opt$INFILES,loadone) %>%
 	bind_rows() 
 
 # sort by distance from 'home'
-home_latlon <- as.numeric(c(opt$homelat,opt$homelon))
-suppressMessages(library(geosphere))
-outdat <- outdat %>%
-	mutate(dist_home_km = round(1e-3 * geosphere::distGeo(rev(home_latlon),matrix(c(lon,lat),ncol=2) ),digits=2)) %>%
-	arrange(dist_home_km) %>% select(-dist_home_km)
-
-#' lat and lon to xyz
-ll_toxyz <- function(myll) {
-	convo <- pi / 180
-	xyz <- matrix(0,nrow=nrow(myll),ncol=3)
-	# in radians
-	myll <- convo * myll
-	xyz[,3] <- sin(myll[,1])
-	cothv  <- cos(myll[,1])
-	xyz[,2] <- cothv * cos(myll[,2])
-	xyz[,1] <- cothv * sin(myll[,2])
-	xyz
-}
-
-#' @param centers_ll a \code{n} by 2 matrix of latitude, longitude
-#' of the center points.
-#' @param findus_ll a \code{m} by 2 matrix of latitude, longitude
-#' of the points to lookup.
-#' @return an \code{m} vector of indices, in the range 1 to \code{n}
-#' giving the index of the center closest to the given findus.
-#' we search in Euclidian space first.
-#' @note as a former computational geometer, I am utterly *ashamed*
-#' of this code.
-minidx <- function(centers_ll,findus_ll) {
-	centers_xyz <- ll_toxyz(centers_ll)
-	findus_xyz <- ll_toxyz(findus_ll)
-	retv <- matrix(rep(0,nrow(findus_xyz)),ncol=1)
-	for (iii in 1:nrow(findus_xyz)) {
-		dels <- colSums((findus_xyz[iii,] - t(centers_xyz))^2)
-		retv[iii] <- which.min(dels)
-	}
-	retv
-}
-
-add_closest_station <- function(outdat,stations) {
-	require(geosphere)
-	centers_ll <- matrix(c(stations$lat,stations$lon),ncol=2)
-	findus_ll <- matrix(c(outdat$lat,outdat$lon),ncol=2)
-	closest_idx <- minidx(centers_ll,findus_ll)
-	outdat$station_code <- stations[closest_idx,]$station
-	outdat$station_elevation <- round(stations[closest_idx,]$elevation)
-
-	nearest_lonlat <- matrix(c(stations[closest_idx,]$lon,stations[closest_idx,]$lat),ncol=2)
-	distkm <- rep(0,nrow(outdat))
-	for (iii in 1:nrow(outdat)) {
-		distkm[iii] <- 1e-3 * geosphere::distGeo(c(outdat[iii,]$lon,outdat[iii,]$lat),nearest_lonlat[iii,])
-	}
-	outdat$station_dist_km <- round(distkm,digits=2)
-	outdat
-}
-
-if (nchar(opt$station_file) > 0) {
-	stations <- readr::read_fwf(opt$station_file,
-															col_positions=readr::fwf_widths(c(12,9,9,7,3,31,4,4,4)))
-	colnames(stations) <- c('station','lat','lon','elevation','state','location_name','GSN_flag','HCN_flag','WMO_ID')
-	stations <- stations %>%
-		filter(!is.na(lat),!is.na(lon)) %>%
-		filter(lat > 0,lon < 0)
-
-	# whitelist them
-	if (nchar(opt$ok_station_list) > 0) {
-		ok_stations <- readr::read_csv(opt$ok_station_list) %>%
-			rename(station=STATION)
-
-		stations <- stations %>%
-			inner_join(ok_stations)
-	}
-
-	outdat <- add_closest_station(outdat,stations)
-}
+#home_lonlat <- as.numeric(c(opt$homelon,opt$homelat))
+#outdat %<>%
+	#mutate(dist_home_km = round(1e-3 * geosphere::distGeo(home_lonlat,matrix(c(lon,lat),ncol=2) ),digits=2)) %>%
+	#arrange(dist_home_km) %>% 
+	#select(-dist_home_km)
 
 # write output
 outdat %>% 

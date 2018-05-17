@@ -1,6 +1,7 @@
 # /usr/bin/r
 # 
 # get the proportions of days that are nice!
+# and HDD and CDD
 #
 # Created: 2017.06.21
 # Copyright: Steven E. Pav, 2017
@@ -9,11 +10,13 @@
 
 suppressMessages(library(docopt))       # we need docopt (>= 0.3) as on CRAN
 
-doc <- "Usage: getcaps.r [-v] [--min_c=<MINC>] [--max_c=<MAXC>] [--max_prcp_mm=<MAXP>] INFILE [OUTFILE]
+doc <- "Usage: getcaps.r [-v] [--min_c=<MINC>] [--max_c=<MAXC>] [--max_prcp_mm=<MAXP>] [--hdd_temp_c=<HDD>] [--cdd_temp_c=<CDD>] INFILE [OUTFILE]
 
 --min_c=MINC                     Minimum temperature in C. [default: 10]
 --max_c=MAXC                     Maximum temperature in C. [default: 30]
 --max_prcp_mm=MAXP               Maximum precipitation in mm. [default: 1]
+--hdd_temp_c=HDD                 Base temperature for heating degree days, in C. [default: 16]
+--cdd_temp_c=CDD                 Base temperature for cooling degree days, in C. [default: 27]
 -v --verbose                     Be more verbose
 -h --help                        show this help text"
 
@@ -25,6 +28,10 @@ suppressMessages({
 	library(dplyr)
 	library(tidyr)
 })
+
+# remember units
+HDDTEMP = 10*as.numeric(opt$hdd_temp_c)
+CDDTEMP = 10*as.numeric(opt$cdd_temp_c)
 
 read_dly <- function(fname) {
 	require(readr)
@@ -53,13 +60,14 @@ read_dly <- function(fname) {
 indata <- read_dly(opt$INFILE) 
 
 outdat <- indata %>%
+		filter(year >= 1990) %>%
 		filter(element %in% c('TMIN','TMAX','PRCP')) 
 	
 if (nrow(outdat) >= 3) {
-		outdat <- outdat %>%
-			select(id,year,month,element,matches('^VALUE\\d\\d?')) %>%
-			tidyr::gather(key='dayno',value='value',matches('^VALUE\\d\\d?')) %>%
-			tidyr::spread(key='element',value='value') 
+	outdat <- outdat %>%
+		select(id,year,month,element,matches('^VALUE\\d\\d?')) %>%
+		tidyr::gather(key='dayno',value='value',matches('^VALUE\\d\\d?')) %>%
+		tidyr::spread(key='element',value='value') 
 		
 	if (! ('TMAX' %in% colnames(outdat))) {
 		outdat <- outdat %>% mutate(TMAX=NA)
@@ -70,21 +78,46 @@ if (nrow(outdat) >= 3) {
 	if (! ('PRCP' %in% colnames(outdat))) {
 		outdat <- outdat %>% mutate(PRCP=NA)
 	}
+	outdat <- outdat %>%
+		filter(!is.na(TMAX) & !is.na(TMIN) & !is.na(PRCP))
+}
+
+if (nrow(outdat) >= 3) {
+	# http://www.vesma.com/ddd/ddcalcs.htm
+	outdat <- outdat %>%
+		mutate(TAVG=0.5 * (TMAX+TMIN)) %>%
+		mutate(HDD=0.10*pmax(0,
+												 (HDDTEMP - TMIN)/4,
+												 ((3*HDDTEMP/4) - TAVG + TMAX/4),
+												 (HDDTEMP - TAVG)),
+					 CDD=0.10*pmax(0,
+												 (TMAX - CDDTEMP)/4,
+												 (TAVG - (3*CDDTEMP/4) - TMIN/4),
+												 (TAVG - CDDTEMP)))
+
+	mono = outdat %>%
+			group_by(month) %>%
+			summarize(mu_hdd=mean(HDD,na.rm=TRUE),
+								mu_cdd=mean(CDD,na.rm=TRUE)) %>%
+			ungroup() %>%
+			summarize(mu_hdd=12*mean(mu_hdd,na.rm=TRUE),
+								mu_cdd=12*mean(mu_cdd,na.rm=TRUE))
 
 	outdat <- outdat %>%
 			mutate(isnice=(TMAX <= 10 * as.numeric(opt$max_c)) &
 							(TMIN >= 10 * as.numeric(opt$min_c)) &
 							(PRCP <= 10 * as.numeric(opt$max_prcp_mm))) %>%
-			filter(year >= 1990) %>%
 			group_by(id) %>%
 				summarize(mu_ok=mean(isnice,na.rm=TRUE),
 									sd_ok=sd(isnice,na.rm=TRUE),
-									df_ok=n()) %>%
+									df_ok=sum(!is.na(isnice))) %>%
 			ungroup() 
+
+	outdat <- outdat %>% cbind(mono)
 } else {
 	outdat <- indata %>%
 		distinct(id) %>%
-		mutate(mu_ok=0,sd_ok=NA,df_ok=NA)
+		mutate(mu_ok=0,sd_ok=NA,df_ok=NA,mu_hdd=NA,mu_cdd=NA)
 }
 
 if (is.null(opt$OUTFILE)) {
