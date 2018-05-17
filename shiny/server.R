@@ -82,11 +82,7 @@ shinyServer(function(input, output, session) {
 					})
 
 	just_load <- reactive({
-		# fix dates_open
-		indat <- readr::read_csv('../all.csv') %>%
-			mutate(dates_open=gsub('ealry','early',dates_open)) %>%
-			mutate(dates_open=gsub(' -','-',dates_open)) %>%
-			mutate(dates_open=gsub('- ','-',dates_open)) 
+		indat <- readr::read_csv('../intermediate/AllCamp.csv') 
 		indat
 	})
 
@@ -99,11 +95,11 @@ shinyServer(function(input, output, session) {
 		}
 
 		otdat <- indat %>%
-			filter(type %in% input$sel_type,
-						 toilets %in% input$sel_toilets,
-						 showers %in% .logical_it(input$sel_showers),
-						 drinking_water %in% .logical_it(input$sel_drinking_water),
-						 reservations %in% .logical_it(input$sel_reservations),
+			filter((length(input$sel_type)==0) | (type %in% input$sel_type),
+						 (length(input$sel_toilets)==0) | (toilets %in% input$sel_toilets),
+						 (length(input$sel_showers)==0) | (showers %in% .logical_it(input$sel_showers)),
+						 (length(input$sel_drinking_water)==0) | (drinking_water %in% .logical_it(input$sel_drinking_water)),
+						 (length(input$sel_reservations)==0) | (reservations %in% .logical_it(input$sel_reservations)),
 						 (!is.na(num_campsite) & (num_campsite >= min(input$sel_num_campsite) & num_campsite <= max(input$sel_num_campsite)) | (is.na(num_campsite))),
 						 (!is.na(elevation_m) & (elevation_m >= min(elrange)) & (elevation_m <= max(elrange))) | (is.na(elevation_m)))
 		otdat

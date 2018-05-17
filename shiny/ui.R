@@ -20,7 +20,7 @@ suppressMessages({
 })
 
 
-#indat <- readr::read_csv('../all.csv')
+#indat <- readr::read_csv('../intermediate/AllCamp.csv') 
 
 types <- list(national=c('National Park'='NP',
 												 'National Monument'='NM',
