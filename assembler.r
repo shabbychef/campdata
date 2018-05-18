@@ -78,7 +78,10 @@ loadone <- function(fname) {
 																	TRUE ~ NA),
 					 showers=case_when(grepl('SH',.$amenities) ~TRUE,
 														 grepl('NS',.$amenities) ~FALSE,
-														 TRUE ~ NA)) %>%
+														 TRUE ~ NA),
+					 pets=case_when(grepl('PA',.$amenities) ~TRUE,
+													grepl('NP',.$amenities) ~FALSE,
+													TRUE ~ NA)) %>%
 		mutate(phone_number=gsub('^-+|-+$','',gsub('[^0-9/;a-zA-Z]','-',phone_number))) %>%
 		mutate(dates_open=gsub('ealry','early',dates_open)) %>%
 		mutate(dates_open=gsub('\\s*-\\s*','-',dates_open)) 
