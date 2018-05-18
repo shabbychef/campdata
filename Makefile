@@ -35,13 +35,12 @@ $(INTERMED)/AllCamp.csv : assembler.r $(UPSTREAM_CSV) | $(INTERMED)
 intermed_camp : $(INTERMED)/AllCamp.csv  ## assemble raw camp data files to one dataset
 
 
-$(INTERMED)/MoreCamp.csv : $(INTERMED)/AllCamp.csv elevation.r | $(INTERMED)
+$(INTERMED)/elevations.csv : $(INTERMED)/AllCamp.csv elevation.r | $(INTERMED)
 	r $(filter %.r,$^) $(filter %.csv,$^) $@
 
-.PHONY : more_camp
+.PHONY : elevations
 
-more_camp : $(INTERMED)/MoreCamp.csv  ## get missing elevation data
-
+elevations : $(INTERMED)/elevations.csv  ## compile missing elevation data
 
 # UNFOLD
 
