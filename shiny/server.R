@@ -15,6 +15,8 @@ suppressMessages({
 	library(geosphere)
 	library(magrittr)
 	library(ggmap)
+	library(urltools)
+	library(stringr)
 })
 
 .applylink <- function(title,url) {
@@ -22,6 +24,16 @@ suppressMessages({
 }
 applylink <- function(title,url) {
 	as.character(mapply(.applylink,title,url))
+}
+.search_link <- function(campground,city,state) {
+	require(stringr)
+	require(urltools)
+	searchterm <- url_encode(paste(campground,city,state))
+	url <- stringr::str_interp('https://www.google.com/search?q=${searchterm}&ie=utf-8&oe=utf-8')
+	.applylink(title=campground,url=url)
+}
+search_link <- function(campground,city,state) {
+	as.character(mapply(.search_link,campground,city,state))
 }
 
 .logical_it <- function(x) {
@@ -82,7 +94,7 @@ shinyServer(function(input, output, session) {
 					})
 
 	just_load <- reactive({
-		indat <- readr::read_csv('../intermediate/AllCamp.csv') 
+		indat <- readr::read_csv('../intermediate/MoreCamp.csv') 
 		indat
 	})
 
@@ -151,6 +163,9 @@ shinyServer(function(input, output, session) {
 				rename(`dist to point, km`=sdist,
 							 `elevation m`=elevation_m)
 		}
+
+		showdat %<>%
+			mutate(campground=search_link(campground,`nearest town`,state))
 
 		# for this javascript shiznit, recall that javascript starts
 		# counting at zero!
