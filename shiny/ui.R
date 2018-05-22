@@ -82,6 +82,7 @@ shinyUI(
 			sliderInput("sel_elevation","Elevation Range (m)",sep=',',post='',min=0,max=4000,value=c(0,1800)),
 			sliderInput("sel_dist","Distance to point (km)",sep=',',post='',min=0,max=1500,value=c(0,100)),
 			sliderInput("sel_num_campsite","Num Campsite Range",sep=',',post=' sites',min=0,max=1000,value=c(0,250)),
+			sliderInput("sel_zoom","Zoom Level",min=5,max=11,value=7,step=1),
 			hr(),
 			helpText('data scraped from the web'),
 			bookmarkButton('bookmark',title='bookmark page'),
@@ -91,7 +92,8 @@ shinyUI(
 		width=9,
 		tabsetPanel(
 			tabPanel('data',#FOLDUP
-					DT::dataTableOutput('camp_table')
+					DT::dataTableOutput('camp_table'),
+					plotOutput('camps_map',width='1000px',height='900px')
 					)#UNFOLD
 				) # tabSetPanel
 			)  # mainPanel#UNFOLD

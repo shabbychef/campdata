@@ -93,6 +93,27 @@ shinyServer(function(input, output, session) {
 						selunits$system <- new_units
 					})
 
+	# in km
+	maximum_radius <- reactive({
+		units <- input$sel_units
+		if (units=='metric') {
+			retv <- input$sel_dist
+		} else {
+			retv <- input$sel_dist * KMPMi
+		}
+		retv
+	})
+	get_zoom_level <- reactive({
+		# in km
+		myrad <- maximum_radius()
+		retv <- dplyr::case_when(myrad < 100 ~ 9L,
+														 myrad < 175 ~ 8L,
+														 myrad < 250 ~ 7L,
+														 myrad < 500 ~ 6L,
+														 TRUE ~ 5L)
+		retv
+	})
+
 	just_load <- reactive({
 		indat <- readr::read_csv('../intermediate/MoreCamp.csv') 
 		indat
@@ -117,6 +138,13 @@ shinyServer(function(input, output, session) {
 		otdat
 	})
 
+	search_data <- reactive({
+		srch_df <- data_frame(lon=input$sel_lon,
+													lat=input$sel_lat,
+													location=coalesce(input$location_lookup,''))
+	})
+
+
 	dist_data <- reactive({
 		srch_lonlat <- c(input$sel_lon,input$sel_lat)
 
@@ -131,6 +159,25 @@ shinyServer(function(input, output, session) {
 			filter(sdist >= min(dirange),sdist <= max(dirange)) %>%
 			arrange(sdist) 
 		otdat 
+	})
+
+	zooml <- reactive({
+		units <- input$sel_units
+		if (units=='metric') {
+			myrad <- input$sel_dist
+		} else {
+			myrad <- input$sel_dist * KMPMi
+		}
+		zl <- dplyr::case_when(myrad < 100 ~ 9L,
+													 myrad < 175 ~ 8L,
+													 myrad < 250 ~ 7L,
+													 myrad < 500 ~ 6L,
+													 TRUE ~ 5L)
+	})
+
+	map_data <- reactive({
+		thedata <- ggmap::get_map(location=c(lon=input$sel_lon,lat=input$sel_lat),zoom=input$sel_zoom,
+															maptype='roadmap',source='google',force=TRUE)
 	})
 
 	# table of comparables #FOLDUP
@@ -182,6 +229,21 @@ shinyServer(function(input, output, session) {
 															 pageLength=15))
 	},
 	server=TRUE)#UNFOLD
+
+	output$camps_map <- renderPlot({
+		mapd <- map_data()
+		otdat <- dist_data()
+		srch_df <- search_data()
+
+		ph <- mapd %>% 
+			ggmap() +
+			geom_point(aes(x=lon,y=lat,size=num_campsite,label=campground_name),data=otdat,alpha=0.5) +
+			geom_text(aes(x=lon,y=lat,label=campground_name),data=otdat,color='red',alpha=0.8) +
+			geom_point(aes(x=lon,y=lat,label=location),data=srch_df,shape=3,color='blue',size=5,alpha=0.8) +
+			geom_text(aes(x=lon,y=lat,label=location),data=srch_df,hjust='left',vjust='bottom',color='blue',size=7,alpha=0.8) 
+
+		ph
+	})
 
 	setBookmarkExclude(c('bookmark'))
 	observeEvent(input$bookmark,{
