@@ -97,21 +97,21 @@ shinyServer(function(input, output, session) {
 	maximum_radius <- reactive({
 		units <- input$sel_units
 		if (units=='metric') {
-			retv <- input$sel_dist
+			myrad <- input$sel_dist
 		} else {
-			retv <- input$sel_dist * KMPMi
+			myrad <- input$sel_dist * KMPMi
 		}
-		retv
+		max(myrad)
 	})
 	get_zoom_level <- reactive({
 		# in km
 		myrad <- maximum_radius()
-		retv <- dplyr::case_when(myrad < 100 ~ 9L,
+		zl <- dplyr::case_when(myrad < 100 ~ 9L,
 														 myrad < 175 ~ 8L,
 														 myrad < 250 ~ 7L,
 														 myrad < 500 ~ 6L,
 														 TRUE ~ 5L)
-		retv
+		zl 
 	})
 
 	just_load <- reactive({
@@ -161,22 +161,11 @@ shinyServer(function(input, output, session) {
 		otdat 
 	})
 
-	zooml <- reactive({
-		units <- input$sel_units
-		if (units=='metric') {
-			myrad <- input$sel_dist
-		} else {
-			myrad <- input$sel_dist * KMPMi
-		}
-		zl <- dplyr::case_when(myrad < 100 ~ 9L,
-													 myrad < 175 ~ 8L,
-													 myrad < 250 ~ 7L,
-													 myrad < 500 ~ 6L,
-													 TRUE ~ 5L)
-	})
 
 	map_data <- reactive({
-		thedata <- ggmap::get_map(location=c(lon=input$sel_lon,lat=input$sel_lat),zoom=input$sel_zoom,
+		zl <- input$sel_zoom
+		zl <- get_zoom_level()
+		thedata <- ggmap::get_map(location=c(lon=input$sel_lon,lat=input$sel_lat),zoom=zl,
 															maptype='roadmap',source='google',force=TRUE)
 	})
 
