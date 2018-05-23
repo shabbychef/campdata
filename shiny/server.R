@@ -17,6 +17,7 @@ suppressMessages({
 	library(ggmap)
 	library(urltools)
 	library(stringr)
+	library(lubridate)
 })
 
 .applylink <- function(title,url) {
@@ -63,6 +64,9 @@ shinyServer(function(input, output, session) {
 	selunits <- reactiveValues(system='metric')
 	observeEvent(input$sel_units,
 					{
+						maxdist_km <- 800
+						maxelev_m <- 4000
+
 						old_units <- selunits$system
 						new_units <- input$sel_units
 						if (old_units != new_units) {
@@ -72,22 +76,22 @@ shinyServer(function(input, output, session) {
 								new_elevation <- old_elevation * MPF
 								updateSliderInput(session,'sel_elevation',
 																	label="Elevation Range (m)",
-																	min=0,max=4000,value=round(new_elevation),step=1)
+																	min=0,max=maxelev_m,value=round(new_elevation),step=1)
 
 								new_dist <- old_dist * KMPMi 
 								updateSliderInput(session,'sel_dist',
 																	label="Distance to point (km)",
-																	min=0,max=1500,value=round(new_dist),step=1)
+																	min=0,max=maxdist_km,value=round(new_dist),step=1)
 							} else {
 								new_elevation <- old_elevation / MPF
 								updateSliderInput(session,'sel_elevation',
 																	label="Elevation Range (ft)",
-																	min=0,max=round(4000 / MPF),value=round(new_elevation),step=1)
+																	min=0,max=round(maxelev_m / MPF),value=round(new_elevation),step=1)
 
 								new_dist <- old_dist / KMPMi 
 								updateSliderInput(session,'sel_dist',
 																	label="Distance to point (mi)",
-																	min=0,max=round(1500 / KMPMi),value=round(new_dist),step=1)
+																	min=0,max=round(maxdist_km / KMPMi),value=round(new_dist),step=1)
 							}
 						}
 						selunits$system <- new_units
@@ -135,6 +139,16 @@ shinyServer(function(input, output, session) {
 						 (length(input$sel_reservations)==0) | (reservations %in% .logical_it(input$sel_reservations)),
 						 (!is.na(num_campsite) & (num_campsite >= min(input$sel_num_campsite) & num_campsite <= max(input$sel_num_campsite)) | (is.na(num_campsite))),
 						 (!is.na(elevation_m) & (elevation_m >= min(elrange)) & (elevation_m <= max(elrange))) | (is.na(elevation_m)))
+
+		if (input$sel_restrict_date) {
+			weeknum <- lubridate::isoweek(input$sel_date)
+			# get rid of things which are definitely closed.
+			otdat %<>%
+				filter((is.na(opening_week) | is.na(closing_week)) |
+							 ((opening_week <= weeknum) & (weeknum <= closing_week)) |   # closed in winter, which makes sense
+							 ((closing_week < opening_week) & ((opening_week <= weeknum) | (weeknum <= closing_week))))
+		}
+
 		otdat
 	})
 
@@ -179,10 +193,11 @@ shinyServer(function(input, output, session) {
 						 nearest_town,state,
 						 elevation_m,
 						 num_campsite,
-						 drinking_water,toilets,showers,reservations)  %>%
+						 drinking_water,toilets,showers,reservations,dates_open)  %>%
 		rename(`campground`=campground_name,
 					 `nearest town`=nearest_town,
-					 `num campsites`=num_campsite)
+					 `num campsites`=num_campsite,
+					 `dates open`=dates_open)
 
 		if (selunits$system=='imperial') {
 			showdat %<>%

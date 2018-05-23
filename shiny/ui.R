@@ -17,6 +17,7 @@ suppressMessages({
 	library(dplyr)
 	library(geosphere)
 	library(ggmap)
+	library(lubridate)
 })
 
 
@@ -79,10 +80,16 @@ shinyUI(
 									selected='true',multiple=TRUE),
 			selectInput("sel_units","Units:",choices=c('metric','imperial'),selected='metric',multiple=FALSE),
 			hr(),
-			sliderInput("sel_elevation","Elevation Range (m)",sep=',',post='',min=0,max=4000,value=c(0,1800)),
-			sliderInput("sel_dist","Distance to point (km)",sep=',',post='',min=0,max=1500,value=c(0,100)),
+			sliderInput("sel_elevation","Elevation Range (m)",sep=',',post='',min=0,max=4000,value=c(0,2000)),
+			sliderInput("sel_dist","Distance to point (km)",sep=',',post='',min=0,max=800,value=c(0,80)),
 			sliderInput("sel_num_campsite","Num Campsite Range",sep=',',post=' sites',min=0,max=1000,value=c(0,250)),
 			sliderInput("sel_zoom","Zoom Level",min=5,max=11,value=7,step=1),
+			helpText('Some campgrounds are closed part of the year.',
+							 'If you select a date, and click the checkbox,',
+							 'we will restrict by opening and closing date. (experimental)'),
+			dateInput("sel_date","Target Date",format='yyyy-mm-dd',
+								startview='month',weekstart=1,value=Sys.Date() %m+% months(2)),
+			checkboxInput("sel_restrict_date","Restrict by Date?",value=FALSE),
 			hr(),
 			helpText('data scraped from the web'),
 			bookmarkButton('bookmark',title='bookmark page'),
