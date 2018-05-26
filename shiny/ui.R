@@ -84,7 +84,7 @@ shinyUI(
 									selected='true',multiple=TRUE))),   # end row
 			selectInput("sel_units","Units:",choices=c('metric','imperial'),selected='metric',multiple=FALSE),
 			hr(),
-			sliderInput("sel_elevation","Elevation Range (m)",sep=',',post='',min=0,max=4000,value=c(0,2000)),
+			sliderInput("sel_elevation","Elevation Range (m)",sep=',',post='',min=-100,max=4000,value=c(0,2000)),
 			sliderInput("sel_dist","Distance to point (km)",sep=',',post='',min=0,max=800,value=c(0,80)),
 			sliderInput("sel_num_campsite","Num Campsite Range",sep=',',post=' sites',min=0,max=1000,value=c(0,250)),
 			sliderInput("sel_zoom","Zoom Level",min=5,max=11,value=7,step=1),

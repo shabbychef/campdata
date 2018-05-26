@@ -65,6 +65,7 @@ shinyServer(function(input, output, session) {
 	observeEvent(input$sel_units,
 					{
 						maxdist_km <- 800
+						minelev_m <- -100
 						maxelev_m <- 4000
 
 						old_units <- selunits$system
@@ -76,7 +77,7 @@ shinyServer(function(input, output, session) {
 								new_elevation <- old_elevation * MPF
 								updateSliderInput(session,'sel_elevation',
 																	label="Elevation Range (m)",
-																	min=0,max=maxelev_m,value=round(new_elevation),step=1)
+																	min=minelev_m,max=maxelev_m,value=round(new_elevation),step=1)
 
 								new_dist <- old_dist * KMPMi 
 								updateSliderInput(session,'sel_dist',
@@ -86,7 +87,7 @@ shinyServer(function(input, output, session) {
 								new_elevation <- old_elevation / MPF
 								updateSliderInput(session,'sel_elevation',
 																	label="Elevation Range (ft)",
-																	min=0,max=round(maxelev_m / MPF),value=round(new_elevation),step=1)
+																	min=round(minelev_m / MPF),max=round(maxelev_m / MPF),value=round(new_elevation),step=1)
 
 								new_dist <- old_dist / KMPMi 
 								updateSliderInput(session,'sel_dist',
