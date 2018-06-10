@@ -1,0 +1,7 @@
+links: 
+[campground info](http://uscampgrounds.info/index.html)
+[google earth lat/long data source](https://guides.library.duke.edu/c.php?g=289381&p=1929709)
+[us geography placename lookup](https://geonames.usgs.gov/domestic/download_data.htm)
+
+[noaa data explanation](ftp://ftp.ncdc.noaa.gov/pub/data/normals/1981-2010/readme.txt)
+[sparklines. add em to shiny!](https://leonawicz.github.io/HtmlWidgetExamples/ex_dt_sparkline.html)
